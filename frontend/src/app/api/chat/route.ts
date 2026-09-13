@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 // ==============================================================================
 // Endpoint Proxy de Chat hacia el Webhook de n8n
 // Separa en el servidor el razonamiento (pensamiento) de la respuesta final,
-// para que el frontend reciba campos limpios y garantizados.
+// y filtra condicionalmente los horarios para que solo aparezcan cuando se requiera.
 // ==============================================================================
 
 interface Part {
@@ -22,6 +22,54 @@ function normalizarHorarios(horarios: unknown): unknown[] | undefined {
     }
   }
   return undefined;
+}
+
+/**
+ * Determina si se deben adjuntar las tarjetas interactivas de citas:
+ * 1. El usuario solicitó explícitamente una reunión, cita o hablar con la directiva.
+ * 2. O el bot no encontró la información oficial y sugiere agendar cita presencial.
+ */
+function debeOfrecerCita(mensajeUsuario: string, respuestaBot: string): boolean {
+  const msgUser = mensajeUsuario.toLowerCase();
+  const respBot = respuestaBot.toLowerCase();
+
+  // Intención explícita del usuario
+  const palabrasUsuarioCita = [
+    "cita",
+    "citas",
+    "agendar",
+    "reunir",
+    "reunion",
+    "reunión",
+    "entrevista",
+    "directiva",
+    "director",
+    "directora",
+    "hablar con",
+    "presencial",
+    "horarios disponibles",
+  ];
+  if (palabrasUsuarioCita.some((palabra) => msgUser.includes(palabra))) {
+    return true;
+  }
+
+  // Sugerencia del bot o falta de información en registros oficiales
+  const frasesBotSugerencia = [
+    "agendar una cita",
+    "agendar su cita",
+    "agendar tu cita",
+    "cita presencial",
+    "reunión con la directiva",
+    "no dispongo de esa información",
+    "no disponemos de esa información",
+    "no cuento con esa información",
+    "no se encuentra en nuestros registros",
+    "sugiero agendar",
+    "puede agendar",
+    "puedes agendar",
+    "horarios disponibles",
+  ];
+  return frasesBotSugerencia.some((frase) => respBot.includes(frase));
 }
 
 /**
@@ -52,7 +100,6 @@ function extraerPensamientoYRespuesta(textoBruto: string): {
     }
 
     const respuestaRaw = lastMatch[1].trim();
-    // Limpiar indentación de espacios al inicio de cada línea para evitar bloques <pre><code>
     const lineas = respuestaRaw.split("\n").map((l) => l.trimStart());
     const respuesta = lineas.join("\n");
 
@@ -166,10 +213,16 @@ export async function POST(req: NextRequest) {
     const respuestaFinal = extraido.respuesta || "No se recibió una respuesta adecuada del sistema.";
     const pensamientoFinal = pensamientoPreexistente || extraido.pensamiento;
 
+    // Condicionar visualización de citas: solo si el usuario pide o si el bot sugiere
+    const mensajeUsuario = typeof body?.mensaje === "string" ? body.mensaje : "";
+    const mostrarHorarios = debeOfrecerCita(mensajeUsuario, respuestaFinal);
+
     return NextResponse.json({
       respuesta: respuestaFinal,
       pensamiento: pensamientoFinal,
-      horarios_disponibles: normalizarHorarios(data?.horarios_disponibles),
+      horarios_disponibles: mostrarHorarios
+        ? normalizarHorarios(data?.horarios_disponibles)
+        : undefined,
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Error desconocido";
