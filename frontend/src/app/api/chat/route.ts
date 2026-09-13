@@ -2,7 +2,119 @@ import { NextRequest, NextResponse } from "next/server";
 
 // ==============================================================================
 // Endpoint Proxy de Chat hacia el Webhook de n8n
+// Separa en el servidor el razonamiento (pensamiento) de la respuesta final,
+// para que el frontend reciba campos limpios y garantizados.
 // ==============================================================================
+
+interface Part {
+  text?: string;
+  thought?: boolean;
+}
+
+function normalizarHorarios(horarios: unknown): unknown[] | undefined {
+  if (Array.isArray(horarios)) return horarios;
+  if (typeof horarios === "string") {
+    try {
+      const parseado = JSON.parse(horarios);
+      if (Array.isArray(parseado)) return parseado;
+    } catch {
+      // No es un JSON válido: se descarta
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Extrae de forma robusta el razonamiento interno (CoT en inglés/borradores)
+ * y la respuesta final en español para el representante.
+ */
+function extraerPensamientoYRespuesta(textoBruto: string): {
+  respuesta: string;
+  pensamiento: string | null;
+} {
+  if (!textoBruto) return { respuesta: "", pensamiento: null };
+  const texto = textoBruto.trim();
+
+  // Caso 1: La respuesta final está contenida entre comillas con un saludo en español
+  const patternComillas = /["“]([\s]*((?:Estimad[oa]|Hola|Buen[oa]s|Saludos|Con gusto|Es un placer)[\s\S]+?))["”]/g;
+  const matches = Array.from(texto.matchAll(patternComillas));
+  if (matches.length > 0) {
+    const lastMatch = matches[matches.length - 1];
+    const startIdx = lastMatch.index ?? 0;
+    const endIdx = startIdx + lastMatch[0].length;
+
+    const pensamientoAntes = texto.slice(0, startIdx).trim();
+    const pensamientoDespues = texto.slice(endIdx).trim();
+
+    let pensamiento = pensamientoAntes;
+    if (pensamientoDespues) {
+      pensamiento = (pensamiento ? pensamiento + "\n\n" : "") + pensamientoDespues;
+    }
+
+    const respuestaRaw = lastMatch[1].trim();
+    // Limpiar indentación de espacios al inicio de cada línea para evitar bloques <pre><code>
+    const lineas = respuestaRaw.split("\n").map((l) => l.trimStart());
+    const respuesta = lineas.join("\n");
+
+    return {
+      respuesta,
+      pensamiento: pensamiento || null,
+    };
+  }
+
+  // Caso 2: Marcadores textuales conocidos de corte
+  const marcadores = [
+    "Refining for Conciseness and Professionalism:",
+    "Final Response:",
+    "Respuesta final:",
+    "Estimado representante",
+    "Estimada representante",
+    "Hola, un gusto saludarle",
+    "Hola, es un gusto saludarle",
+    "Buen día, estimado",
+    "Buen día, estimada",
+    "Con gusto le informo",
+  ];
+
+  for (const marcador of marcadores) {
+    const idx = texto.lastIndexOf(marcador);
+    if (idx > 60) {
+      const pensamiento = texto.slice(0, idx).trim();
+      let resto = texto.slice(idx).trim();
+
+      // Limpiar encabezados en inglés
+      for (const m of [
+        "Refining for Conciseness and Professionalism:",
+        "Final Response:",
+        "Respuesta final:",
+      ]) {
+        if (resto.startsWith(m)) {
+          resto = resto.slice(m.length).trim();
+        }
+      }
+
+      if (
+        (resto.startsWith('"') && resto.endsWith('"')) ||
+        (resto.startsWith("“") && resto.endsWith("”"))
+      ) {
+        resto = resto.slice(1, -1).trim();
+      }
+
+      const lineas = resto.split("\n").map((l) => l.trimStart());
+      return {
+        respuesta: lineas.join("\n"),
+        pensamiento: pensamiento || null,
+      };
+    }
+  }
+
+  // Caso 3: Respuesta directa sin razonamiento previo
+  const lineas = texto.split("\n").map((l) => l.trimStart());
+  return {
+    respuesta: lineas.join("\n"),
+    pensamiento: null,
+  };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +138,39 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+
+    // Rama de agendado de cita: se pasa tal cual viene de Supabase.
+    if (typeof data?.exito === "boolean") {
+      return NextResponse.json({
+        exito: data.exito,
+        mensaje: typeof data.mensaje === "string" ? data.mensaje : "Operación completada.",
+        cita: data.cita ?? null,
+      });
+    }
+
+    let textoCrudo = "";
+    let pensamientoPreexistente: string | null = null;
+
+    if (typeof data?.respuesta === "string") {
+      textoCrudo = data.respuesta;
+    } else if (Array.isArray(data?.partes)) {
+      const partes = data.partes as Part[];
+      const p = partes.filter((x) => x.thought).map((x) => x.text ?? "").join("\n\n").trim();
+      const r = partes.filter((x) => !x.thought).map((x) => x.text ?? "").join("\n").trim();
+      textoCrudo = r;
+      pensamientoPreexistente = p || null;
+    }
+
+    // Extraer pensamiento y respuesta final
+    const extraido = extraerPensamientoYRespuesta(textoCrudo);
+    const respuestaFinal = extraido.respuesta || "No se recibió una respuesta adecuada del sistema.";
+    const pensamientoFinal = pensamientoPreexistente || extraido.pensamiento;
+
+    return NextResponse.json({
+      respuesta: respuestaFinal,
+      pensamiento: pensamientoFinal,
+      horarios_disponibles: normalizarHorarios(data?.horarios_disponibles),
+    });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Error desconocido";
     return NextResponse.json(

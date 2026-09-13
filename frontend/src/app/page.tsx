@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Header from "@/components/Header";
 import HorariosList from "@/components/HorariosList";
 import CitaModal, { Horario } from "@/components/CitaModal";
+import MensajeBot from "@/components/MensajeBot";
 
 // ==============================================================================
 // Página Principal: Interfaz Conversacional del Chatbot Institucional 24/7
@@ -13,28 +14,11 @@ interface Mensaje {
   id: string;
   remitente: "bot" | "usuario";
   texto: string;
+  pensamiento?: string | null;
   horarios?: Horario[];
   citaConfirmada?: boolean;
 }
 
-// Función para limpiar posibles trazas o notas internas del modelo
-function limpiarTextoRespuesta(texto: string): string {
-  if (!texto) return "";
-  // Si contiene comillas de respuesta final, extraer la respuesta limpia
-  const matchComillas = texto.match(/"([^"]{30,})"/);
-  if (matchComillas && matchComillas[1]) {
-    return matchComillas[1].trim();
-  }
-  // Si empieza con notas en inglés, buscar saludos en español
-  const saludos = ["Hola", "Estimado", "Buen día", "Buenas tardes", "Saludos", "Con gusto"];
-  for (const saludo of saludos) {
-    const idx = texto.indexOf(saludo);
-    if (idx !== -1 && idx > 50) {
-      return texto.slice(idx).trim();
-    }
-  }
-  return texto.trim();
-}
 
 export default function Home() {
   const [mensajes, setMensajes] = useState<Mensaje[]>([
@@ -86,7 +70,9 @@ export default function Home() {
       }
 
       const data = await res.json();
-      const textoLimpio = limpiarTextoRespuesta(data.respuesta || "No recibí una respuesta adecuada del sistema.");
+      const textoLimpio = data.respuesta || "No recibí una respuesta adecuada del sistema.";
+      const pensamiento =
+        typeof data.pensamiento === "string" && data.pensamiento ? data.pensamiento : null;
 
       // Filtrar horarios duplicados si los hubiera
       const horariosUnicos = data.horarios_disponibles
@@ -97,6 +83,7 @@ export default function Home() {
         id: (Date.now() + 1).toString(),
         remitente: "bot",
         texto: textoLimpio,
+        pensamiento,
         horarios: horariosUnicos,
       };
 
@@ -172,14 +159,18 @@ export default function Home() {
             }`}
           >
             <div
-              className={`max-w-[88%] md:max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed shadow-md ${
+              className={`max-w-[88%] md:max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed shadow-md break-words min-w-0 ${
                 m.remitente === "usuario"
                   ? "bg-blue-600 text-white rounded-br-none"
-                  : "bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none"
+                  : "bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-none"
               }`}
             >
-              {/* Formato de texto limpio */}
-              <div className="whitespace-pre-wrap">{m.texto}</div>
+              {/* Render inteligente: oculta pensamiento del LLM, muestra respuesta final */}
+              {m.remitente === "bot" ? (
+                <MensajeBot texto={m.texto} pensamiento={m.pensamiento} />
+              ) : (
+                <div className="whitespace-pre-wrap">{m.texto}</div>
+              )}
 
               {/* Lista interactiva de citas si el bot retornó horarios */}
               {m.horarios && m.horarios.length > 0 && (

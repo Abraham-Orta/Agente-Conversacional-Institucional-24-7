@@ -242,7 +242,7 @@ workflow = {
         {
             "parameters": {
                 "respondWith": "json",
-                "responseBody": "={\n  \"respuesta\": {{ JSON.stringify($json.candidates[0].content.parts[0].text) }},\n  \"horarios_disponibles\": {{ JSON.stringify($(\"Ensamblar Prompt y Contexto\").first().json.horarios) }}\n}",
+                "responseBody": "={\n  \"partes\": {{ JSON.stringify($json.candidates[0].content.parts) }},\n  \"horarios_disponibles\": {{ JSON.stringify($(\"Ensamblar Prompt y Contexto\").first().json.horarios) }}\n}",
                 "options": {}
             },
             "id": "node-resp-chat",
