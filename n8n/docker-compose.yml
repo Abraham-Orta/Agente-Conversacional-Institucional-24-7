@@ -1,0 +1,27 @@
+# ==============================================================================
+# docker-compose.yml: Despliegue local de n8n para orquestación del chatbot
+# ==============================================================================
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n_colegio
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=America/Caracas
+    volumes:
+      - n8n_datos:/home/node/.n8n
+
+volumes:
+  n8n_datos:
+    # Volumen persistente para conservar credenciales y flujos en local

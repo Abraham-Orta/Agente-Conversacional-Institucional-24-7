@@ -1,0 +1,21 @@
+# Variables de entorno y secretos
+.env
+.env.local
+.env*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+
+# Sistema y logs
+*.log
+.DS_Store
