@@ -198,7 +198,7 @@ workflow = {
         {
             "parameters": {
                 "method": "GET",
-                "url": f"{supabase_url}/rest/v1/calendario_directivo?estado=eq.Disponible&order=fecha.asc,hora_inicio.asc&limit=4",
+                "url": f"{supabase_url}/rest/v1/calendario_directivo?estado=eq.Disponible&order=fecha.asc,hora_inicio.asc&limit=10",
                 "sendHeaders": True,
                 "headerParameters": {
                     "parameters": [
