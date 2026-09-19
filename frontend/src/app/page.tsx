@@ -14,17 +14,26 @@ interface Mensaje {
   id: string;
   remitente: "bot" | "usuario";
   texto: string;
+  timestamp: string;
   pensamiento?: string | null;
   horarios?: Horario[];
   citaConfirmada?: boolean;
 }
 
+function getHoraActual(): string {
+  return new Date().toLocaleTimeString("es-VE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 export default function Home() {
   const [mensajes, setMensajes] = useState<Mensaje[]>([
     {
       id: "bienvenida",
       remitente: "bot",
+      timestamp: getHoraActual(),
       texto:
         "¡Hola! 👋 Soy el Asistente Virtual Oficial del Colegio Institucional (atención 24/7).\n\nPuedo responder tus dudas sobre costos de matrícula, normativas de uniformes, horarios y requisitos de inscripción, o ayudarte a agendar una cita con la directiva escolar.\n\n¿En qué te puedo colaborar hoy?",
     },
@@ -45,10 +54,13 @@ export default function Home() {
     const texto = textoAEnviar || inputTexto;
     if (!texto.trim() || cargando) return;
 
+    const hora = getHoraActual();
+
     const nuevoMensajeUsuario: Mensaje = {
       id: Date.now().toString(),
       remitente: "usuario",
       texto: texto.trim(),
+      timestamp: hora,
     };
 
     setMensajes((prev) => [...prev, nuevoMensajeUsuario]);
@@ -83,6 +95,7 @@ export default function Home() {
         id: (Date.now() + 1).toString(),
         remitente: "bot",
         texto: textoLimpio,
+        timestamp: getHoraActual(),
         pensamiento,
         horarios: horariosUnicos,
       };
@@ -96,6 +109,7 @@ export default function Home() {
           id: (Date.now() + 1).toString(),
           remitente: "bot",
           texto: `⚠️ Lo siento, ocurrió un error temporal: ${errorMsg}. Por favor, intentá nuevamente.`,
+          timestamp: getHoraActual(),
         },
       ]);
     } finally {
@@ -132,6 +146,7 @@ export default function Home() {
         id: Date.now().toString(),
         remitente: "bot",
         texto: `✅ ¡Cita confirmada con éxito!\n\n📅 Fecha: ${data.cita?.fecha}\n⏰ Horario: ${data.cita?.hora_inicio} a ${data.cita?.hora_fin}\n👤 Representante: ${data.cita?.nombre_representante}\n\nTe esperamos puntualmente en la directiva escolar.`,
+        timestamp: getHoraActual(),
         citaConfirmada: true,
       },
     ]);
@@ -139,83 +154,120 @@ export default function Home() {
 
   // Preguntas sugeridas para interacción rápida
   const sugerencias = [
-    "¿Cuánto cuesta la matrícula y mensualidad?",
-    "¿Cuál es el horario escolar de entrada y salida?",
-    "¿Cómo es el uniforme de primaria?",
-    "¿Qué horarios tienen disponibles para citas directivas?",
+    { icono: "💰", texto: "¿Cuánto cuesta la matrícula y mensualidad?" },
+    { icono: "⏰", texto: "¿Cuál es el horario escolar de entrada y salida?" },
+    { icono: "👔", texto: "¿Cómo es el uniforme de primaria?" },
+    { icono: "📅", texto: "¿Qué horarios tienen disponibles para citas directivas?" },
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="flex flex-col h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
       <Header />
 
-      {/* Contenedor de Mensajes */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 max-w-4xl mx-auto w-full space-y-4">
-        {mensajes.map((m) => (
-          <div
-            key={m.id}
-            className={`flex flex-col ${
-              m.remitente === "usuario" ? "items-end" : "items-start"
-            }`}
-          >
+      {/* Contenedor Principal con Scroll a Pantalla Completa */}
+      <main className="flex-1 overflow-y-auto w-full">
+        <div className="max-w-4xl mx-auto w-full px-4 py-6 md:px-8 space-y-6">
+          {mensajes.map((m) => (
             <div
-              className={`max-w-[88%] md:max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed shadow-md break-words min-w-0 ${
-                m.remitente === "usuario"
-                  ? "bg-blue-600 text-white rounded-br-none"
-                  : "bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-none"
+              key={m.id}
+              className={`flex items-start gap-3 ${
+                m.remitente === "usuario" ? "flex-row-reverse" : "flex-row"
               }`}
             >
-              {/* Render inteligente: oculta pensamiento del LLM, muestra respuesta final */}
+              {/* Avatar */}
               {m.remitente === "bot" ? (
-                <MensajeBot texto={m.texto} pensamiento={m.pensamiento} />
+                <div className="w-9 h-9 rounded-full bg-blue-600 border border-blue-500/50 flex items-center justify-center text-white shadow-md shadow-blue-600/20 flex-shrink-0 mt-0.5">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                  </svg>
+                </div>
               ) : (
-                <div className="whitespace-pre-wrap">{m.texto}</div>
+                <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shadow-md flex-shrink-0 mt-0.5">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
               )}
 
-              {/* Lista interactiva de citas si el bot retornó horarios */}
-              {m.horarios && m.horarios.length > 0 && (
-                <HorariosList
-                  horarios={m.horarios}
-                  onSeleccionarHorario={(h) => {
-                    setHorarioParaAgendar(h);
-                    setModalAbierto(true);
-                  }}
-                />
-              )}
-            </div>
-            <span className="text-[10px] text-slate-500 mt-1 px-1">
-              {m.remitente === "usuario" ? "Tú" : "Asistente Virtual"}
-            </span>
-          </div>
-        ))}
+              {/* Burbuja del mensaje */}
+              <div
+                className={`flex flex-col ${
+                  m.remitente === "usuario" ? "items-end" : "items-start"
+                } max-w-[85%] md:max-w-[78%] min-w-0`}
+              >
+                <div
+                  className={`rounded-2xl p-4 text-sm leading-relaxed shadow-md break-words min-w-0 ${
+                    m.remitente === "usuario"
+                      ? "bg-blue-600 text-white rounded-tr-none"
+                      : "bg-slate-900 border border-slate-800 text-slate-100 rounded-tl-none"
+                  }`}
+                >
+                  {/* Render inteligente: oculta pensamiento del LLM, muestra respuesta final */}
+                  {m.remitente === "bot" ? (
+                    <MensajeBot texto={m.texto} pensamiento={m.pensamiento} />
+                  ) : (
+                    <div className="whitespace-pre-wrap">{m.texto}</div>
+                  )}
 
-        {/* Indicador de escritura */}
-        {cargando && (
-          <div className="flex items-start gap-2">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl rounded-bl-none p-4 shadow-md flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-bounce"></span>
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-bounce [animation-delay:0.2s]"></span>
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-bounce [animation-delay:0.4s]"></span>
-            </div>
-          </div>
-        )}
+                  {/* Lista interactiva de citas si el bot retornó horarios */}
+                  {m.horarios && m.horarios.length > 0 && (
+                    <HorariosList
+                      horarios={m.horarios}
+                      onSeleccionarHorario={(h) => {
+                        setHorarioParaAgendar(h);
+                        setModalAbierto(true);
+                      }}
+                    />
+                  )}
+                </div>
 
-        <div ref={mensajesEndRef} />
+                {/* Remitente y Hora */}
+                <div className="flex items-center gap-1.5 mt-1 px-1 text-[10px] text-slate-500 font-medium">
+                  <span>{m.remitente === "usuario" ? "Tú" : "Asistente Virtual"}</span>
+                  <span>•</span>
+                  <span>{m.timestamp}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Indicador de escritura */}
+          {cargando && (
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-blue-600 border border-blue-500/50 flex items-center justify-center text-white shadow-md flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
+                </svg>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-none p-4 shadow-md flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-bounce"></span>
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-bounce [animation-delay:0.2s]"></span>
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-bounce [animation-delay:0.4s]"></span>
+              </div>
+            </div>
+          )}
+
+          <div ref={mensajesEndRef} />
+        </div>
       </main>
 
       {/* Sugerencias de Preguntas Frecuentes */}
       {mensajes.length <= 2 && (
-        <div className="px-4 py-2 max-w-4xl mx-auto w-full">
-          <p className="text-xs text-slate-500 mb-2 font-medium">Preguntas frecuentes:</p>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <div className="px-4 py-3 max-w-4xl mx-auto w-full">
+          <p className="text-xs text-slate-500 mb-2.5 font-medium flex items-center gap-1.5">
+            <span>✨</span> Sugerencias de consulta rápida:
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {sugerencias.map((sug, idx) => (
               <button
                 key={idx}
-                onClick={() => enviarMensaje(sug)}
+                onClick={() => enviarMensaje(sug.texto)}
                 disabled={cargando}
-                className="whitespace-nowrap bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 px-3 py-1.5 rounded-full text-xs transition-colors shadow-sm"
+                className="whitespace-nowrap bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs transition-all shadow-sm flex items-center gap-2 group"
               >
-                {sug}
+                <span className="text-sm group-hover:scale-110 transition-transform">{sug.icono}</span>
+                <span>{sug.texto}</span>
               </button>
             ))}
           </div>
@@ -237,7 +289,7 @@ export default function Home() {
             value={inputTexto}
             onChange={(e) => setInputTexto(e.target.value)}
             disabled={cargando}
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-white text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors shadow-inner"
+            className="flex-1 bg-slate-800/90 border border-slate-700 rounded-2xl px-4 py-3 text-white text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors shadow-inner"
           />
           <button
             type="submit"
