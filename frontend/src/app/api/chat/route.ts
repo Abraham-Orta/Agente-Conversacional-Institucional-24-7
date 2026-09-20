@@ -75,6 +75,7 @@ function debeOfrecerCita(mensajeUsuario: string, respuestaBot: string): boolean 
 /**
  * Extrae de forma robusta el razonamiento interno (CoT en inglés/borradores)
  * y la respuesta final en español para el representante.
+ * Solo se usa como FALLBACK cuando n8n no manda el campo "pensamiento" ya separado.
  */
 function extraerPensamientoYRespuesta(textoBruto: string): {
   respuesta: string;
@@ -200,6 +201,14 @@ export async function POST(req: NextRequest) {
 
     if (typeof data?.respuesta === "string") {
       textoCrudo = data.respuesta;
+
+      // FIX: n8n ya nos manda el pensamiento separado y limpio en "data.pensamiento"
+      // (usando el flag "thought" de la API de Gemini/Gemma). Hay que leerlo
+      // directamente en vez de depender solo de la extracción por regex, que
+      // no encuentra nada porque "textoCrudo" ya viene sin rastro del razonamiento.
+      if (typeof data?.pensamiento === "string" && data.pensamiento.trim()) {
+        pensamientoPreexistente = data.pensamiento.trim();
+      }
     } else if (Array.isArray(data?.partes)) {
       const partes = data.partes as Part[];
       const p = partes.filter((x) => x.thought).map((x) => x.text ?? "").join("\n\n").trim();
@@ -208,9 +217,9 @@ export async function POST(req: NextRequest) {
       pensamientoPreexistente = p || null;
     }
 
-    // Extraer pensamiento y respuesta final
+    // Extraer pensamiento y respuesta final (fallback si no vino "pensamiento" preexistente)
     const extraido = extraerPensamientoYRespuesta(textoCrudo);
-    const respuestaFinal = extraido.respuesta || "No se recibió una respuesta adecuada del sistema.";
+    const respuestaFinal = extraido.respuesta || textoCrudo || "No se recibió una respuesta adecuada del sistema.";
     const pensamientoFinal = pensamientoPreexistente || extraido.pensamiento;
 
     // Condicionar visualización de citas: solo si el usuario pide o si el bot sugiere
