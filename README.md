@@ -1,132 +1,122 @@
 # Agente Conversacional Institucional 24/7
 
-> **Unidad Curricular:** Ingeniería de Software 1  
-> **Institución:** Universidad Nacional Experimental de Guayana   
-> **Proyecto 16 :** Agente Conversacional Institucional 24/7  
-> **Desarrollador:** Abrahám Orta  
+Sistema web de atención automatizada para una institución educativa. Permite
+consultar información oficial mediante RAG (Retrieval-Augmented Generation) y
+agendar citas con la directiva mediante una operación transaccional protegida
+contra dobles reservas.
 
----
+> **Proyecto:** 16 — Ingeniería de Software 1
+> **Institución:** Universidad Nacional Experimental de Guayana (UNEG)
+> **Autor:** Abrahám Orta
 
-## 1. Descripción del Proyecto
+## Entregables del repositorio
 
-Sistema integral de atención automatizada disponible 24/7 diseñado para instituciones educativas. El agente procesa lenguaje natural mediante técnicas de **RAG (Generación Aumentada por Recuperación)** fundamentadas en bases de datos vectoriales (`pgvector` en PostgreSQL) y modelos de lenguaje de Google Gemini, garantizando respuestas estrictamente apegadas al reglamento, calendario y tarifas oficiales sin alucinaciones.
+| Entregable | Documento |
+|---|---|
+| README | Este documento |
+| Arquitectura | [`docs/ARQUITECTURA.md`](./docs/ARQUITECTURA.md) |
+| Setup | [`docs/SETUP.md`](./docs/SETUP.md) |
+| Calidad y pruebas | [`docs/CALIDAD.md`](./docs/CALIDAD.md) |
 
-Adicionalmente, incorpora un motor transaccional con propiedades **ACID** para la gestión y agendamiento en tiempo real de citas con la directiva escolar, previniendo colisiones o dobles reservas bajo concurrencia.
+## Funcionalidades
 
----
+- Chat institucional disponible 24/7 desde una interfaz web responsiva.
+- Respuestas fundamentadas en documentos normativos, horarios y tarifas
+  oficiales mediante embeddings y búsqueda semántica con `pgvector`.
+- Separación del razonamiento interno y la respuesta final del modelo.
+- Consulta de horarios disponibles para reuniones con la directiva.
+- Agendamiento de citas desde el chat.
+- Prevención de reservas duplicadas bajo concurrencia mediante PostgreSQL.
+- Panel administrativo para gestionar documentos normativos, horarios y
+  métricas.
 
-## 2. Arquitectura del Sistema
+## Tecnologías
 
-El sistema implementa una arquitectura orientada a servicios (SOA) y modular dividida en tres capas principales:
+- **Frontend:** Next.js 14, React 18, TypeScript y Tailwind CSS.
+- **Orquestación:** n8n ejecutándose en Docker.
+- **Persistencia:** PostgreSQL administrado por Supabase y `pgvector`.
+- **IA:** Google Gemini para embeddings y generación de respuestas.
+- **Despliegue:** Vercel para el frontend y Azure VM para n8n.
 
-```
-[ Cliente Web ]  <--->  [ Middleware n8n ]  <--->  [ Persistencia & IA ]
- (Next.js 14)           (Event-Driven Bus)         (Supabase + pgvector / Gemini)
-```
-
-1. **Capa de Presentación (Frontend):**
-   - Construida en **Next.js 14** (App Router) y **Tailwind CSS**.
-   - Interfaz conversacional adaptativa (*mobile-first*), con tarjetas interactivas de horarios disponibles y modal de reserva transaccional.
-   - Endpoint proxy interno (`/api/chat`) para evitar problemas de CORS y proteger la dirección del webhook.
-
-2. **Capa de Orquestación y Lógica de Negocio (Middleware):**
-   - Implementada sobre **n8n** en contenedor Docker.
-   - Orquesta la bifurcación lógica entre consultas informativas (pipeline RAG) y operaciones transaccionales (reserva de citas en base de datos).
-   - Inyección de contexto estricto con temperatura cero (0.0) hacia el LLM.
-
-3. **Capa de Persistencia y Seguridad (Base de Datos):**
-   - Alojada en **PostgreSQL (Supabase)** con la extensión `pgvector`.
-   - Búsqueda por similitud coseno en documentos normativos mediante índice HNSW.
-   - Procedimiento almacenado `agendar_cita` con aislamiento y atomicidad ACID.
-   - Seguridad perimetral mediante **Row Level Security (RLS)** y principio de menor privilegio.
-
----
-
-## 3. Cumplimiento de Estándares de Calidad
-
-- **ISO/IEC 25010 (Adecuación Funcional y Fiabilidad):** Validación atómica en motor de base de datos antes de confirmar asignaciones horarias; mitigación sistemática de alucinaciones informativas mediante contexto inyectado.
-- **IEEE 730 (Aseguramiento de Calidad del Software - SQA):** Modularidad en capas, separación estricta de secretos en `.env` y control de ramas mediante integración continua.
-
----
-
-## 4. Estructura del Repositorio
+## Estructura del repositorio
 
 ```text
-proyecto-software/
-├── database/                   # Capa de datos y persistencia (PostgreSQL / Supabase)
-│   ├── 01_schema.sql           # Tablas, extensión pgvector, índices y RLS
-│   ├── 02_functions.sql        # Funciones RPC (match_documentos, agendar_cita)
-│   ├── 03_seed_data.sql        # Normativas, aranceles y bloques horarios de prueba
-│   ├── seed_embeddings.py      # Vectorización con Gemini text-embedding
-│   └── test_acid.sql           # Script de validación de concurrencia ACID
-├── frontend/                   # Interfaz de usuario (Next.js + Tailwind CSS)
-│   ├── src/
-│   │   ├── app/                # Rutas y páginas (App Router)
-│   │   │   ├── api/chat/       # Proxy seguro hacia n8n
-│   │   │   ├── layout.tsx      # Configuración de layout y metadatos
-│   │   │   └── page.tsx        # Interfaz de chat interactiva
-│   │   └── components/         # Componentes modulares (Header, CitaModal, HorariosList)
+.
+├── database/
+│   ├── 01_schema.sql          # Tablas, pgvector, índices y RLS
+│   ├── 02_functions.sql       # RPC de búsqueda y agendamiento ACID
+│   ├── 03_seed_data.sql       # Datos iniciales
+│   ├── 04_admin_setup.sql     # Configuración administrativa
+│   ├── 05_logs_chat.sql       # Registro de conversaciones
+│   ├── seed_embeddings.py     # Generación de embeddings
+│   └── test_acid.sql          # Validación de concurrencia
+├── frontend/
+│   ├── src/app/api/chat/      # Proxy seguro hacia n8n
+│   ├── src/app/admin/         # Panel administrativo
+│   ├── src/components/        # Componentes de interfaz
 │   └── package.json
-├── n8n/                        # Middleware de automatización
-│   ├── docker-compose.yml      # Despliegue local de n8n con persistencia y DNS
-│   ├── generar_workflow.py     # Generador automatizado del flujo con credenciales
-│   └── workflow_colegio.json   # Definición exportable/importable del flujo
-├── .env.example                # Plantilla de variables de entorno
-├── .gitignore                  # Exclusión de credenciales y dependencias
-└── README.md                   # Documentación general del proyecto
+├── n8n/
+│   ├── docker-compose.yml     # Ejecución local de n8n
+│   ├── workflow_colegio.json  # Workflow importable
+│   └── generar_workflow.py    # Generador del workflow
+├── docs/
+│   ├── ARQUITECTURA.md
+│   └── SETUP.md
+├── .env.example
+└── README.md
 ```
 
----
+## Inicio rápido
 
-## 5. Puesta en Marcha Rápida
+Consulta [`docs/SETUP.md`](./docs/SETUP.md) para la configuración completa.
 
-### Requisitos Previos
-- Node.js v18+ y npm
-- Docker y Docker Compose
-- Cuenta en Supabase (PostgreSQL gratuito)
-- Clave de API de Google Gemini (Google AI Studio)
-
-### Paso 1: Configurar Variables de Entorno
-Copia la plantilla y configura tus credenciales:
-```bash
-cp .env.example .env
-```
-Edita `.env` con tus claves reales de Supabase y Gemini.
-
-### Paso 2: Base de Datos (Supabase)
-Ejecuta en el **SQL Editor** de Supabase en este orden:
-1. `database/01_schema.sql`
-2. `database/02_functions.sql`
-3. `database/03_seed_data.sql`
-
-Luego, vectoriza la base de conocimientos ejecutando:
-```bash
-python3 database/seed_embeddings.py
-```
-
-### Paso 3: Orquestación (n8n)
-Levanta la instancia local de n8n:
-```bash
-docker compose -f n8n/docker-compose.yml up -d
-```
-1. Ingresa a `http://localhost:5678`.
-2. Ve a **Workflows** -> **Import from File** y selecciona `n8n/workflow_colegio.json`.
-3. Haz clic en **Publish** (arriba a la derecha) para activar el Webhook de producción.
-
-### Paso 4: Frontend (Next.js)
-Inicia la aplicación web:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Abre tu navegador en `http://localhost:3000`.
 
----
+La aplicación estará disponible en <http://localhost:3000>.
 
-## 6. Historias de Usuario Verificadas
+## Despliegue
 
-- **HU01 - Consulta Normativa (RAG):** Representantes consultan aranceles y normativas en lenguaje natural, recibiendo respuestas fundamentadas en documentos oficiales.
-- **HU02 - Reserva de Citas Directivas:** Los usuarios pueden seleccionar un horario disponible y agendar una reunión formal desde el chat.
-- **HU03 - Prevención de Cruces (ACID):** Intentos simultáneos de reserva sobre el mismo horario son rechazados atómicamente por PostgreSQL.
-- **HU04 - Fiabilidad de Información:** Si una pregunta escapa al reglamento cargado, el asistente virtual no alucina e invita a reservar una cita presencial.
+La configuración usada en producción es:
+
+```text
+Frontend Next.js  →  Vercel
+        │
+        └── /api/chat
+                │
+                ▼
+        n8n en Docker → Azure VM
+                │
+                ▼
+        Supabase + Google Gemini
+```
+
+Para conocer las variables, el orden de inicialización de Supabase, la
+importación del workflow y el despliegue en Azure y Vercel, consulta
+[`docs/SETUP.md`](./docs/SETUP.md).
+
+## Seguridad
+
+- No subas `.env`, `.env.local`, claves privadas SSH ni credenciales de n8n.
+- Las variables `SUPABASE_SERVICE_ROLE_KEY` y `GEMINI_API_KEY` son únicamente
+  de servidor.
+- Usa una URL HTTPS pública para `N8N_WEBHOOK_URL` en producción.
+- Rota cualquier credencial que haya sido expuesta en un commit, exportación o
+  captura.
+
+## Validación
+
+Desde `frontend/`:
+
+```bash
+npm run build
+```
+
+La prueba de concurrencia de reservas está en
+[`database/test_acid.sql`](./database/test_acid.sql).
+
+Los controles de calidad, el workflow de CI y la checklist de smoke testing
+están documentados en [`docs/CALIDAD.md`](./docs/CALIDAD.md).

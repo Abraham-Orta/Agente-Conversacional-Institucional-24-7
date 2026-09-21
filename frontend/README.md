@@ -23,28 +23,68 @@ Construido con **Next.js 14** (App Router), **React**, **TypeScript** y **Tailwi
 frontend/src/
 ├── app/
 │   ├── api/
-│   │   └── chat/
-│   │       └── route.ts          # Endpoint proxy hacia el Webhook de n8n
+│   │   ├── chat/
+│   │   │   └── route.ts          # Proxy hacia el webhook de n8n
+│   │   └── admin/
+│   │       ├── documentos/
+│   │       │   ├── route.ts       # CRUD de documentos normativos
+│   │       │   └── [id]/route.ts  # Actualizar y eliminar documentos
+│   │       ├── horarios/
+│   │       │   ├── route.ts       # Listar y crear horarios
+│   │       │   └── [id]/route.ts  # Actualizar y eliminar horarios
+│   │       └── metricas/
+│   │           └── route.ts       # Métricas del panel administrativo
+│   ├── admin/
+│   │   ├── login/page.tsx         # Inicio de sesión administrativo
+│   │   ├── page.tsx               # Resumen del panel
+│   │   ├── documentos/
+│   │   │   ├── page.tsx           # Gestión de documentos
+│   │   │   └── [id]/page.tsx      # Edición de documentos
+│   │   ├── horarios/page.tsx      # Gestión de horarios
+│   │   └── layout.tsx             # Layout y navegación administrativa
 │   ├── fonts/                    # Tipografías Geist optimizadas
 │   ├── globals.css               # Estilos globales y directivas de Tailwind CSS
 │   ├── layout.tsx                # Metadatos del sitio e idioma institucional
 │   └── page.tsx                  # Vista principal del chat y gestión de estado
-└── components/
-    ├── Header.tsx                # Cabecera con insignia y badge "En línea 24/7"
-    ├── HorariosList.tsx          # Cuadrícula interactiva de bloques horarios
-    └── CitaModal.tsx             # Modal para confirmación de citas directivas
+├── components/
+│   ├── Header.tsx                # Cabecera con insignia y badge "En línea 24/7"
+│   ├── HorariosList.tsx          # Cuadrícula interactiva de bloques horarios
+│   ├── CitaModal.tsx             # Modal de confirmación de citas directivas
+│   └── MensajeBot.tsx            # Renderizado de mensajes y razonamiento
+├── lib/
+│   └── supabase/
+│       ├── browser.ts             # Cliente Supabase para el navegador
+│       └── server.ts              # Clientes Supabase de servidor y admin
+└── middleware.ts                  # Protección y renovación de sesión
 ```
+
+### Superficies principales
+
+- **Chat público:** `/` y `/api/chat`.
+- **Panel administrativo:** `/admin`, `/admin/documentos` y
+  `/admin/horarios`.
+- **Autenticación:** `/admin/login` mediante Supabase Auth y middleware.
+- **API administrativa:** `/api/admin/documentos`, `/api/admin/horarios` y
+  `/api/admin/metricas`.
 
 ---
 
 ## Configuración de Entorno
 
-El frontend se conecta a n8n mediante la variable de entorno definida en `.env.local`:
+El frontend se conecta a n8n mediante la variable de entorno definida en
+`.env.local`:
 
 ```env
-# URL del Webhook de n8n (Local o Túnel de Producción)
+# Desarrollo
 N8N_WEBHOOK_URL=http://localhost:5678/webhook/chat
+
+# Producción: usar la URL HTTPS pública de n8n
+# N8N_WEBHOOK_URL=https://n8n.tudominio.com/webhook/chat
 ```
+
+La configuración completa, incluyendo Supabase, Azure y Vercel, está en
+[`../docs/SETUP.md`](../docs/SETUP.md). La descripción de componentes y flujos
+está en [`../docs/ARQUITECTURA.md`](../docs/ARQUITECTURA.md).
 
 ---
 

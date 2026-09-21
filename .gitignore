@@ -19,3 +19,6 @@ build/
 # Sistema y logs
 *.log
 .DS_Store
+
+# Claves privadas
+*.pem
