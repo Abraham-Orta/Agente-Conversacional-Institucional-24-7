@@ -63,8 +63,7 @@ async function getMetricas(): Promise<Metricas> {
     supabase
       .from("logs_chat")
       .select("id, session_id, mensaje_usuario, total_tokens, created_at")
-      .order("created_at", { ascending: false })
-      .limit(5),
+      .order("created_at", { ascending: false }),
   ]);
 
   const horarios = horariosResult.data ?? [];
@@ -168,7 +167,7 @@ export default async function AdminDashboardPage() {
               No hay registros de chat aún.
             </div>
           ) : (
-            <div className="divide-y divide-slate-800">
+            <div className="max-h-[32rem] overflow-y-auto overflow-x-hidden divide-y divide-slate-800">
               {metricas.logs_recientes.map((log) => (
                 <div key={log.id} className="px-6 py-3.5 flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -177,7 +176,7 @@ export default async function AdminDashboardPage() {
                         {log.session_id}
                       </span>
                     </div>
-                    <p className="text-slate-300 text-xs truncate mt-1">
+                    <p className="text-slate-300 text-xs whitespace-pre-wrap break-words mt-1">
                       {log.mensaje_usuario}
                     </p>
                   </div>

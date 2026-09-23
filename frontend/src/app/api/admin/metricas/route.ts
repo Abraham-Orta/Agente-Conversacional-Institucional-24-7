@@ -45,8 +45,7 @@ export async function GET() {
       supabase
         .from("logs_chat")
         .select("id, session_id, mensaje_usuario, total_tokens, created_at")
-        .order("created_at", { ascending: false })
-        .limit(5),
+        .order("created_at", { ascending: false }),
     ]);
 
     if (docsResult.error) throw docsResult.error;

@@ -36,6 +36,15 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    href: "/admin/tokens",
+    label: "Uso de tokens",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v18m4-14.5A3.5 3.5 0 0012.5 3h-1A3.5 3.5 0 008 6.5c0 1.933 1.567 3.5 3.5 3.5h1a3.5 3.5 0 010 7h-1A3.5 3.5 0 018 13.5M12 3V1m0 22v-2" />
+      </svg>
+    ),
+  },
 ];
 
 function Sidebar() {

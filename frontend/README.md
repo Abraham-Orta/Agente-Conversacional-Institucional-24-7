@@ -41,6 +41,7 @@ frontend/src/
 │   │   │   ├── page.tsx           # Gestión de documentos
 │   │   │   └── [id]/page.tsx      # Edición de documentos
 │   │   ├── horarios/page.tsx      # Gestión de horarios
+│   │   ├── tokens/page.tsx        # Uso de tokens por consulta
 │   │   └── layout.tsx             # Layout y navegación administrativa
 │   ├── fonts/                    # Tipografías Geist optimizadas
 │   ├── globals.css               # Estilos globales y directivas de Tailwind CSS
@@ -61,8 +62,8 @@ frontend/src/
 ### Superficies principales
 
 - **Chat público:** `/` y `/api/chat`.
-- **Panel administrativo:** `/admin`, `/admin/documentos` y
-  `/admin/horarios`.
+- **Panel administrativo:** `/admin`, `/admin/documentos`, `/admin/horarios` y
+  `/admin/tokens`.
 - **Autenticación:** `/admin/login` mediante Supabase Auth y middleware.
 - **API administrativa:** `/api/admin/documentos`, `/api/admin/horarios` y
   `/api/admin/metricas`.
